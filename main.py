@@ -13,6 +13,7 @@ white = 255, 255, 255
 myfont10 = pygame.font.SysFont('arial', 10)
 myfont14 = pygame.font.SysFont('arial', 14)
 
+map_dict = {}
 screen = pygame.display.set_mode(size)
 
 class HexCell:
@@ -25,7 +26,7 @@ class HexCell:
         master_render_list.append(self)
         (x, y) = self.row_col.to_screen_coords()
         self.debug_box = textBox(x+10, y+10)
-        self.debug_box.setText(str(self.row_col.to_screen_coords()))
+        self.debug_box.setText("HIGH")
         self.debug_box.disable()
 
     def render(self):
@@ -91,6 +92,15 @@ class textBox:
             tempSurface = self.myFont.render(self.text, False, black)
             screen.blit(tempSurface, (self.x, self.y))
 
+def screen_to_row_col(screenX, screenY):
+    # THIS DOESNT WORK -- just do the cube coords thing from redblob
+    screenX = floor(screenX)
+    screenY = floor(screenY)
+    row = floor(screenY / hex_height * 0.75)
+    if row&1 == 1:
+        screenX -= floor(hex_width/2)
+    col = screenX / hex_width
+    return (floor(row), floor(col))
 
 # load graphics
 hex = pygame.image.load("hex63.png")
@@ -110,17 +120,14 @@ master_render_list = []
 for row in range(0, vertical_iterations):
     for col in range(0, horizontal_iterations):
         this_cell = HexCell(row_col_coords(row, col))
-
-
-
-
+        map_dict[(row, col)] = this_cell
 
 def render_all():
     for thing in master_render_list:
         thing.render()
 
 mousePosDebug = textBox(x=1, y=1, size=14)
-mousePosDebug.disable()
+last_highlit_cell = -1
 
 while 1:
     hexrect.x = 0
@@ -130,6 +137,11 @@ while 1:
             sys.exit()
         if event.type == MOUSEMOTION:
             mousePosDebug.setText(str(event.pos))
+            hover_cell = map_dict[screen_to_row_col(event.pos[0], event.pos[1])]
+            hover_cell.debug_box.enable()
+            if last_highlit_cell != hover_cell and last_highlit_cell != -1:
+                last_highlit_cell.debug_box.disable()
+                last_highlit_cell = hover_cell
     screen.fill(white)
     render_all()
     pygame.display.flip()
