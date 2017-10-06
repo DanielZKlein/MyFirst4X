@@ -25,10 +25,12 @@ class HexCell:
         self.resources = resources
         master_render_list.append(self)
         (x, y) = self.row_col.to_screen_coords()
-        self.debug_box = textBox(x+10, y+10)
-        self.debug_box.setText("HIGH")
+        self.debug_box = textBox(x+25, y+50)
+        self.debug_box.setText(self.row_col.to_str())
         self.debug_box.disable()
 
+    def __repr__(self):
+        return "HexCell(%s)" % self.row_col.to_str()
     def render(self):
         (hexrect.x, hexrect.y) = self.row_col.to_screen_coords()
         screen.blit(hex, hexrect)
@@ -92,15 +94,36 @@ class textBox:
             tempSurface = self.myFont.render(self.text, False, black)
             screen.blit(tempSurface, (self.x, self.y))
 
-def screen_to_row_col(screenX, screenY):
-    # THIS DOESNT WORK -- just do the cube coords thing from redblob
-    screenX = floor(screenX)
-    screenY = floor(screenY)
-    row = floor(screenY / hex_height * 0.75)
+def myPixelToHex(x, y):
+    # first, find row. Should be straightforward.
+    row = floor(y / (hex_height * 0.75))
+    # okay, we have the row. If we're in an odd row, calculate the offset
     if row&1 == 1:
-        screenX -= floor(hex_width/2)
-    col = screenX / hex_width
-    return (floor(row), floor(col))
+        x -= floor(hex_width/2)
+    # cool, now just get me the lowest col number in this range
+    col = floor(x / hex_width)
+    # note this function doesn't work super well around the point top and bottom parts of the hexes, but whatev
+    return row, col
+
+def hex_round(cube):
+    rx = round(cube.x)
+    ry = round(cube.y)
+    rz = round(cube.z)
+
+    dx = abs(rx-cube.x)
+    dy = abs(ry-cube.y)
+    dz = abs(rz-cube.z)
+
+    if dx > dy and dx > dz:
+        rx = -ry-rz
+    elif dy > dz:
+        ry = -rx-rz
+    else:
+        rz = -rx-ry
+
+    return cube_coords(rx, ry, rz)
+
+
 
 # load graphics
 hex = pygame.image.load("hex63.png")
@@ -137,11 +160,17 @@ while 1:
             sys.exit()
         if event.type == MOUSEMOTION:
             mousePosDebug.setText(str(event.pos))
-            hover_cell = map_dict[screen_to_row_col(event.pos[0], event.pos[1])]
+            (x, y) = event.pos
+            (row, col) = myPixelToHex(x, y)
+            row = min(vertical_iterations, row)
+            col = min(horizontal_iterations, col)
+            row = max(0, row)
+            col = max(0, col)
+            hover_cell = map_dict[(row, col)]
             hover_cell.debug_box.enable()
             if last_highlit_cell != hover_cell and last_highlit_cell != -1:
                 last_highlit_cell.debug_box.disable()
-                last_highlit_cell = hover_cell
+            last_highlit_cell = hover_cell
     screen.fill(white)
     render_all()
     pygame.display.flip()
